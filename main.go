@@ -1,1 +1,5 @@
-package goChat
+package main
+
+func main() {
+	println("Hello, World!")
+}
