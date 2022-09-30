@@ -13,7 +13,7 @@ var upgrader = websocket.Upgrader{}
 
 func main() {
 	http.HandleFunc("/", loadHome)
-	http.HandleFunc("/client", loadClient)
+	http.HandleFunc("/login", login)
 	http.HandleFunc("/ws", ws)
 
 	fileServer := http.FileServer(http.Dir("./src/assets"))
@@ -41,11 +41,11 @@ func loadClient(w http.ResponseWriter, r *http.Request) {
 
 	vue, _ := os.ReadFile("./src/views/template.html")
 	vueStr := string(vue)
-	home, _ := os.ReadFile("./src/views/client.html")
-	homeStr := string(home)
+	client, _ := os.ReadFile("./src/views/client.html")
+	clientStr := string(client)
 	vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
 	vueStr = strings.Replace(vueStr, "###SUBTITLE###", "Attendez, un technicien est sur le point de vous aider !", 1)
-	vueStr = strings.Replace(vueStr, "###CONTENT###", homeStr, 1)
+	vueStr = strings.Replace(vueStr, "###CONTENT###", clientStr, 1)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	io.WriteString(w, vueStr)
@@ -77,6 +77,10 @@ func load404(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	io.WriteString(w, vueStr)
+}
+
+func login(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/client", loadClient)
 }
 
 func ws(w http.ResponseWriter, r *http.Request) {
