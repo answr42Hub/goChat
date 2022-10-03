@@ -1,7 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"github.com/gorilla/websocket"
+	_ "github.com/mattn/go-sqlite3"
 	"io"
 	"log"
 	"net/http"
@@ -10,10 +12,19 @@ import (
 )
 
 var upgrader = websocket.Upgrader{}
+var db *sql.DB
 
 func main() {
+
+	db, err := sql.Open("sqlite3", "./src/db/database.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
 	http.HandleFunc("/", loadHome)
-	http.HandleFunc("/login", login)
+	http.HandleFunc("/client", loadClient)
+	http.HandleFunc("/404", loadClient)
 	http.HandleFunc("/ws", ws)
 
 	fileServer := http.FileServer(http.Dir("./src/assets"))
@@ -29,6 +40,14 @@ func loadHome(w http.ResponseWriter, r *http.Request) {
 	vueStr := string(vue)
 	home, _ := os.ReadFile("./src/views/home.html")
 	homeStr := string(home)
+
+	if r.URL.Path != "/" {
+		homeStr = strings.Replace(homeStr, "###ERROR###", "d-block", 1)
+		homeStr = strings.Replace(homeStr, "###MSG###", "Assurez-vous que votre nom d'utilisateur et votre mot de passe sont valides !", 1)
+	} else {
+		homeStr = strings.Replace(homeStr, "###ERROR###", "d-none", 1)
+	}
+
 	vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
 	vueStr = strings.Replace(vueStr, "###SUBTITLE###", "On vous aide même à distance !", 1)
 	vueStr = strings.Replace(vueStr, "###CONTENT###", homeStr, 1)
@@ -80,7 +99,25 @@ func load404(w http.ResponseWriter, r *http.Request) {
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
-	http.HandleFunc("/client", loadClient)
+	if r.URL.Path != "/login" {
+		load404(w, r)
+		return
+	}
+	switch r.Method {
+	case "GET":
+		load404(w, r)
+	case "POST":
+		user := r.FormValue("username")
+		pass := r.FormValue("password")
+		if userExists(db, user) && checkPassword(db, user, pass) {
+			loadTech(w, r)
+		} else {
+			loadHome(w, r)
+			io.WriteString(w, "Login failed")
+		}
+	default:
+		load404(w, r)
+	}
 }
 
 func ws(w http.ResponseWriter, r *http.Request) {
