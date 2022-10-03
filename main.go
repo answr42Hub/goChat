@@ -23,9 +23,12 @@ func main() {
 	defer db.Close()
 
 	http.HandleFunc("/", loadHome)
+	http.HandleFunc("/login", login)
 	http.HandleFunc("/client", loadClient)
 	http.HandleFunc("/404", loadClient)
 	http.HandleFunc("/ws", ws)
+
+	//admin : techadminsuperpassword
 
 	fileServer := http.FileServer(http.Dir("./src/assets"))
 	http.Handle("/assets/", http.StripPrefix("/assets/", fileServer))
@@ -84,6 +87,19 @@ func loadTech(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, vueStr)
 }
 
+func loadAdmin(w http.ResponseWriter, r *http.Request) {
+	vue, _ := os.ReadFile("./src/views/template.html")
+	vueStr := string(vue)
+	admin, _ := os.ReadFile("./src/views/admin.html")
+	adminStr := string(admin)
+	vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
+	vueStr = strings.Replace(vueStr, "###SUBTITLE###", "Bienvenue cher administrateur", 1)
+	vueStr = strings.Replace(vueStr, "###CONTENT###", adminStr, 1)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	io.WriteString(w, vueStr)
+}
+
 func load404(w http.ResponseWriter, r *http.Request) {
 
 	vue, _ := os.ReadFile("./src/views/template.html")
@@ -110,7 +126,11 @@ func login(w http.ResponseWriter, r *http.Request) {
 		user := r.FormValue("username")
 		pass := r.FormValue("password")
 		if userExists(db, user) && checkPassword(db, user, pass) {
-			loadTech(w, r)
+			if userIsAdmin(db, user) {
+				loadAdmin(w, r)
+			} else {
+				loadTech(w, r)
+			}
 		} else {
 			loadHome(w, r)
 			io.WriteString(w, "Login failed")

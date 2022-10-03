@@ -17,7 +17,7 @@ func userExists(db *sql.DB, username string) bool {
 
 func userIsAdmin(db *sql.DB, username string) bool {
 	var isAdmin bool
-	err := db.QueryRow("SELECT isAdmin FROM users WHERE username = ?", username).Scan(&isAdmin)
+	err := db.QueryRow("SELECT is_admin FROM users WHERE username = ?", username).Scan(&isAdmin)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func addUser(db *sql.DB, username string, password string, isAdmin int) {
 
 	hashedPassword := hashPassword(password)
 
-	query := "INSERT INTO users (username, password, isAdmin) VALUES (?, ?, ?)"
+	query := "INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)"
 
 	db.Prepare(query)
 
