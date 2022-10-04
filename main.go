@@ -42,7 +42,7 @@ func main() {
 func loadHome(w http.ResponseWriter, r *http.Request) {
 
 	cookie, cookieError := r.Cookie("session")
-	if cookieError == nil && IsConnected(db) {
+	if cookieError == nil {
 		user := GetUser(db, cookie.Value)
 		if user != "" {
 			if UserIsAdmin(db, user) {
@@ -168,17 +168,16 @@ func login(w http.ResponseWriter, r *http.Request) {
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
-	if IsConnected(db) {
-		cookie, cookieError := r.Cookie("session")
-		if cookieError == nil {
-			user := GetUser(db, cookie.Value)
-			if user != "" {
-				Disconnect(db, user)
-			}
-			cookie.Value = "Unuse"
-			cookie.Expires = time.Unix(0, 0)
-			http.SetCookie(w, cookie)
+
+	cookie, cookieError := r.Cookie("session")
+	if cookieError == nil {
+		user := GetUser(db, cookie.Value)
+		if user != "" {
+			Disconnect(db, user)
 		}
+		cookie.Value = "Unuse"
+		cookie.Expires = time.Unix(0, 0)
+		http.SetCookie(w, cookie)
 	}
 }
 

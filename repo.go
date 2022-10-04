@@ -10,12 +10,12 @@ import (
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func UserExists(db *sql.DB, username string) bool {
-	var exists bool
-	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username = ?)", username).Scan(&exists)
+	var exists string
+	err := db.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&exists)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return exists
+	return exists != ""
 }
 
 func UserIsAdmin(db *sql.DB, username string) bool {
@@ -86,15 +86,6 @@ func Disconnect(db *sql.DB, username string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func IsConnected(db *sql.DB) bool {
-	var connected bool
-	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE token IS NOT NULL)").Scan(&connected)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return connected
 }
 
 func RandStringBytes(n int) string {
