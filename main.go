@@ -9,14 +9,15 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 var upgrader = websocket.Upgrader{}
 var db *sql.DB
 
 func main() {
-
-	db, err := sql.Open("sqlite3", "./src/db/database.db")
+	var err error
+	db, err = sql.Open("sqlite3", "./src/db/database.db")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -25,6 +26,7 @@ func main() {
 	http.HandleFunc("/", loadHome)
 	http.HandleFunc("/login", login)
 	http.HandleFunc("/client", loadClient)
+	http.HandleFunc("/admin", loadTech)
 	http.HandleFunc("/404", loadClient)
 	http.HandleFunc("/ws", ws)
 
@@ -39,6 +41,19 @@ func main() {
 
 func loadHome(w http.ResponseWriter, r *http.Request) {
 
+	cookie, cookieError := r.Cookie("session")
+	if cookieError == nil && IsConnected(db) {
+		user := GetUser(db, cookie.Value)
+		if user != "" {
+			if UserIsAdmin(db, user) {
+				http.Redirect(w, r, "/admin", http.StatusTemporaryRedirect)
+				return
+			} else {
+				http.Redirect(w, r, "/tech", http.StatusTemporaryRedirect)
+				return
+			}
+		}
+	}
 	vue, _ := os.ReadFile("./src/views/template.html")
 	vueStr := string(vue)
 	home, _ := os.ReadFile("./src/views/home.html")
@@ -80,7 +95,12 @@ func loadTech(w http.ResponseWriter, r *http.Request) {
 	home, _ := os.ReadFile("./src/views/tech.html")
 	homeStr := string(home)
 	vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
-	vueStr = strings.Replace(vueStr, "###SUBTITLE###", "Aidez le plus de personne possible !", 1)
+	cookie, cookieError := r.Cookie("session")
+	usrMsg := "Bienvenue cher technicien "
+	if cookieError == nil {
+		usrMsg += GetUser(db, cookie.Value) + " !"
+	}
+	vueStr = strings.Replace(vueStr, "###SUBTITLE###", usrMsg, 1)
 	vueStr = strings.Replace(vueStr, "###CONTENT###", homeStr, 1)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -116,27 +136,49 @@ func load404(w http.ResponseWriter, r *http.Request) {
 
 func login(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/login" {
-		load404(w, r)
+		http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
 		return
 	}
 	switch r.Method {
 	case "GET":
-		load404(w, r)
+		http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
 	case "POST":
 		user := r.FormValue("username")
 		pass := r.FormValue("password")
-		if userExists(db, user) && checkPassword(db, user, pass) {
-			if userIsAdmin(db, user) {
-				loadAdmin(w, r)
+		if UserExists(db, user) && CheckPassword(db, user, pass) {
+			if UserIsAdmin(db, user) {
+				token := HashPassword(RandStringBytes(32)) + HashPassword(user)
+				Connect(db, user, token)
+				sessionCookie := http.Cookie{Name: "session", Value: token, HttpOnly: true}
+				http.SetCookie(w, &sessionCookie)
+				http.Redirect(w, r, "/admin", http.StatusTemporaryRedirect)
 			} else {
-				loadTech(w, r)
+				token := HashPassword(RandStringBytes(32)) + HashPassword(user)
+				Connect(db, user, token)
+				sessionCookie := http.Cookie{Name: "session", Value: token, HttpOnly: true}
+				http.SetCookie(w, &sessionCookie)
+				http.Redirect(w, r, "/tech", http.StatusTemporaryRedirect)
 			}
 		} else {
-			loadHome(w, r)
-			io.WriteString(w, "Login failed")
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		}
 	default:
-		load404(w, r)
+		http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
+	}
+}
+
+func logout(w http.ResponseWriter, r *http.Request) {
+	if IsConnected(db) {
+		cookie, cookieError := r.Cookie("session")
+		if cookieError == nil {
+			user := GetUser(db, cookie.Value)
+			if user != "" {
+				Disconnect(db, user)
+			}
+			cookie.Value = "Unuse"
+			cookie.Expires = time.Unix(0, 0)
+			http.SetCookie(w, cookie)
+		}
 	}
 }
 
