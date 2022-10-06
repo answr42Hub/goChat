@@ -3,19 +3,18 @@ package main
 import (
 	"crypto/sha256"
 	"database/sql"
+	"fmt"
 	"log"
 	"math/rand"
 )
-
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func UserExists(db *sql.DB, username string) bool {
 	var exists string
 	err := db.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&exists)
 	if err != nil {
-		log.Fatal(err)
+		return false
 	}
-	return exists != ""
+	return true
 }
 
 func UserIsAdmin(db *sql.DB, username string) bool {
@@ -41,13 +40,47 @@ func AddUser(db *sql.DB, username string, password string, isAdmin int) {
 	}
 }
 
+func IsOnline(db *sql.DB, username string) bool {
+	var token string
+	err := db.QueryRow("SELECT token FROM users WHERE username = ?", username).Scan(&token)
+	if err != nil {
+		return false
+	}
+	return token != ""
+}
+
 func GetUser(db *sql.DB, token string) string {
 	var user string
 	err := db.QueryRow("SELECT username FROM users WHERE token = ?", token).Scan(&user)
 	if err != nil {
-		log.Fatal(err)
+		return ""
 	}
 	return user
+}
+
+func GetUsers(db *sql.DB) map[string]string {
+	rows, err := db.Query("SELECT id, username FROM users WHERE is_admin = 0")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	users := make(map[string]string)
+
+	for rows.Next() {
+		var user string
+		var id string
+		err = rows.Scan(&id, &user)
+		if err != nil {
+			log.Fatal(err)
+		}
+		users[id] = user
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return users
 }
 
 func RemoveUser(db *sql.DB, username string) {
@@ -82,21 +115,25 @@ func Disconnect(db *sql.DB, username string) {
 	query := "UPDATE users SET token = ? WHERE username = ?"
 	db.Prepare(query)
 
-	_, err := db.Exec(query, "NULL", username)
+	_, err := db.Exec(query, nil, username)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 func RandStringBytes(n int) string {
+	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
 }
 
 func HashPassword(password string) string {
-	hash := sha256.Sum256([]byte(password))
-	return string(hash[:])
+	hash := sha256.New()
+	hash.Write([]byte(password))
+	bs := hash.Sum(nil)
+	str := fmt.Sprintf("%x", bs)
+	return str
 }

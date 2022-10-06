@@ -25,9 +25,13 @@ func main() {
 
 	http.HandleFunc("/", loadHome)
 	http.HandleFunc("/login", login)
+	http.HandleFunc("/logout", logout)
 	http.HandleFunc("/client", loadClient)
-	http.HandleFunc("/admin", loadTech)
-	http.HandleFunc("/404", loadClient)
+	http.HandleFunc("/admin", loadAdmin)
+	http.HandleFunc("/addtech", loadAddTech)
+	http.HandleFunc("/add", addTech)
+	http.HandleFunc("/tech", loadTech)
+	http.HandleFunc("/404", load404)
 	http.HandleFunc("/ws", ws)
 
 	//admin : techadminsuperpassword
@@ -36,7 +40,6 @@ func main() {
 	http.Handle("/assets/", http.StripPrefix("/assets/", fileServer))
 
 	http.ListenAndServe(":8080", nil)
-
 }
 
 func loadHome(w http.ResponseWriter, r *http.Request) {
@@ -108,16 +111,63 @@ func loadTech(w http.ResponseWriter, r *http.Request) {
 }
 
 func loadAdmin(w http.ResponseWriter, r *http.Request) {
-	vue, _ := os.ReadFile("./src/views/template.html")
-	vueStr := string(vue)
-	admin, _ := os.ReadFile("./src/views/admin.html")
-	adminStr := string(admin)
-	vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
-	vueStr = strings.Replace(vueStr, "###SUBTITLE###", "Bienvenue cher administrateur", 1)
-	vueStr = strings.Replace(vueStr, "###CONTENT###", adminStr, 1)
+	cookie, cookieError := r.Cookie("session")
+	if cookieError == nil {
+		user := GetUser(db, cookie.Value)
+		if user != "" && UserIsAdmin(db, user) {
+			vue, _ := os.ReadFile("./src/views/template.html")
+			vueStr := string(vue)
+			admin, _ := os.ReadFile("./src/views/admin.html")
+			adminStr := string(admin)
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	io.WriteString(w, vueStr)
+			onlineStr := ""
+			list := ""
+			users := GetUsers(db)
+			for id, user := range users {
+				if IsOnline(db, user) {
+					onlineStr = "En ligne"
+				} else {
+					onlineStr = "Hors ligne"
+				}
+				list += "<div class='col-sm-6'><div class='card' style='width: 18rem;'><div class='card-body'><h5 class='card-title'>" + user + "</h5><p class='card-text'>" + onlineStr + "</p><a class='btn btn-warning' href='/edit?id='" + id + "'>Modifier</a><a class='btn btn-danger' href='/delete?id='" + id + "'>Supprimer</a></div></div></div>"
+			}
+
+			adminStr = strings.Replace(adminStr, "###LIST###", list, 1)
+			vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
+			vueStr = strings.Replace(vueStr, "###SUBTITLE###", "Bienvenue cher administrateur", 1)
+			vueStr = strings.Replace(vueStr, "###CONTENT###", adminStr, 1)
+
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			io.WriteString(w, vueStr)
+		} else {
+			http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
+		}
+	} else {
+		http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
+	}
+}
+
+func loadAddTech(w http.ResponseWriter, r *http.Request) {
+
+	cookie, cookieError := r.Cookie("session")
+	if cookieError == nil {
+		if UserIsAdmin(db, GetUser(db, cookie.Value)) {
+
+			vue, _ := os.ReadFile("./src/views/template.html")
+			vueStr := string(vue)
+			tech, _ := os.ReadFile("./src/views/addTech.html")
+			techStr := string(tech)
+			vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
+			vueStr = strings.Replace(vueStr, "###SUBTITLE###", "Ajouter un technicien", 1)
+			vueStr = strings.Replace(vueStr, "###CONTENT###", techStr, 1)
+
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			io.WriteString(w, vueStr)
+		} else {
+			http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
+		}
+	}
+
 }
 
 func load404(w http.ResponseWriter, r *http.Request) {
@@ -147,13 +197,13 @@ func login(w http.ResponseWriter, r *http.Request) {
 		pass := r.FormValue("password")
 		if UserExists(db, user) && CheckPassword(db, user, pass) {
 			if UserIsAdmin(db, user) {
-				token := HashPassword(RandStringBytes(32)) + HashPassword(user)
+				token := HashPassword(RandStringBytes(32) + user)
 				Connect(db, user, token)
 				sessionCookie := http.Cookie{Name: "session", Value: token, HttpOnly: true}
 				http.SetCookie(w, &sessionCookie)
 				http.Redirect(w, r, "/admin", http.StatusTemporaryRedirect)
 			} else {
-				token := HashPassword(RandStringBytes(32)) + HashPassword(user)
+				token := HashPassword(RandStringBytes(32) + user)
 				Connect(db, user, token)
 				sessionCookie := http.Cookie{Name: "session", Value: token, HttpOnly: true}
 				http.SetCookie(w, &sessionCookie)
@@ -168,7 +218,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
-
 	cookie, cookieError := r.Cookie("session")
 	if cookieError == nil {
 		user := GetUser(db, cookie.Value)
@@ -178,6 +227,37 @@ func logout(w http.ResponseWriter, r *http.Request) {
 		cookie.Value = "Unuse"
 		cookie.Expires = time.Unix(0, 0)
 		http.SetCookie(w, cookie)
+	}
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+}
+
+func addTech(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/add" {
+		http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
+		return
+	}
+	switch r.Method {
+	case "GET":
+		http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
+	case "POST":
+		cookie, cookieError := r.Cookie("session")
+		if cookieError == nil {
+			if UserIsAdmin(db, GetUser(db, cookie.Value)) {
+				user := r.FormValue("username")
+				pass := r.FormValue("password")
+				passconf := r.FormValue("passconf")
+				if !UserExists(db, user) {
+					if pass == passconf {
+						AddUser(db, user, pass, 0)
+						http.Redirect(w, r, "/admin", http.StatusTemporaryRedirect)
+					}
+				}
+			} else {
+				http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
+			}
+		}
+	default:
+		http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
 	}
 }
 
