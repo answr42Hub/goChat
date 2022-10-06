@@ -170,6 +170,30 @@ func loadAddTech(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func loadEditTech(w http.ResponseWriter, r *http.Request) {
+	cookie, cookieError := r.Cookie("session")
+	if cookieError == nil {
+		if UserIsAdmin(db, GetUser(db, cookie.Value)) {
+
+			userID := r.URL.Query().Get("id")
+
+			vue, _ := os.ReadFile("./src/views/template.html")
+			vueStr := string(vue)
+			tech, _ := os.ReadFile("./src/views/editTech.html")
+			techStr := string(tech)
+			vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
+			vueStr = strings.Replace(vueStr, "###SUBTITLE###", "Modifier un technicien", 1)
+			vueStr = strings.Replace(vueStr, "###CONTENT###", techStr, 1)
+
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			io.WriteString(w, vueStr)
+		} else {
+			http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
+		}
+	}
+
+}
+
 func load404(w http.ResponseWriter, r *http.Request) {
 
 	vue, _ := os.ReadFile("./src/views/template.html")
