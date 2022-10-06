@@ -129,7 +129,7 @@ func loadAdmin(w http.ResponseWriter, r *http.Request) {
 				} else {
 					onlineStr = "Hors ligne"
 				}
-				list += "<div class='col-sm-6'><div class='card' style='width: 18rem;'><div class='card-body'><h5 class='card-title'>" + user + "</h5><p class='card-text'>" + onlineStr + "</p><a class='btn btn-warning' href='/edit?id='" + id + "'>Modifier</a><a class='btn btn-danger' href='/delete?id='" + id + "'>Supprimer</a></div></div></div>"
+				list += "<div class='mt-2 mx-2'><div class='card' style='width: 18rem;'><div class='card-body'><h5 class='card-title'>" + user + "</h5><p class='card-text'>" + onlineStr + "</p><a class='btn btn-warning' href='/edit?id='" + id + "'>Modifier</a><a class='btn btn-danger' href='/delete?id='" + id + "'>Supprimer</a></div></div></div>"
 			}
 
 			adminStr = strings.Replace(adminStr, "###LIST###", list, 1)
