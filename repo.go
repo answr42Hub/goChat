@@ -58,6 +58,25 @@ func GetUser(db *sql.DB, token string) string {
 	return user
 }
 
+func GetUserByID(db *sql.DB, id string) string {
+	var user string
+	err := db.QueryRow("SELECT username FROM users WHERE id = ?", id).Scan(&user)
+	if err != nil {
+		return ""
+	}
+	return user
+}
+
+func EditUser(db *sql.DB, userID string, newname string, password string) {
+	query := "UPDATE users SET username = ?, password = ? WHERE id = ?"
+	db.Prepare(query)
+
+	_, err := db.Exec(query, newname, HashPassword(password), userID)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func GetUsers(db *sql.DB) map[string]string {
 	rows, err := db.Query("SELECT id, username FROM users WHERE is_admin = 0")
 	if err != nil {
@@ -83,10 +102,10 @@ func GetUsers(db *sql.DB) map[string]string {
 	return users
 }
 
-func RemoveUser(db *sql.DB, username string) {
-	query := "DELETE FROM users WHERE username = ?"
+func DelUser(db *sql.DB, id string) {
+	query := "DELETE FROM users WHERE id = ?"
 	db.Prepare(query)
-	_, err := db.Exec(query, username)
+	_, err := db.Exec(query, id)
 	if err != nil {
 		log.Fatal(err)
 	}
