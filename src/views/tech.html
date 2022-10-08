@@ -2,6 +2,7 @@
   window.onload = function () {
     var conn;
     var msg = document.getElementById("msg");
+    var id = document.getElementById("tech");
     var log = document.getElementById("log");
 
     function appendLog(item) {
@@ -19,7 +20,7 @@
       if (!msg.value) {
         return false;
       }
-      conn.send(msg.value);
+      conn.send(id.value + ";" + msg.value);
       msg.value = "";
       return false;
     };
@@ -35,7 +36,12 @@
         var messages = evt.data.split('\n');
         for (var i = 0; i < messages.length; i++) {
           var item = document.createElement("div");
-          item.innerText = messages[i];
+          let messageId = messages[i].split(';');
+            if (messageId[0] === "1") {
+                item.innerText = "Vous: " + messageId[1];
+            } else {
+                item.innerText = "Client: " + messageId[1];
+            }
           appendLog(item);
         }
       };
@@ -49,7 +55,6 @@
 <div class="container-fluid d-flex flex-column h-100">
   <div class="text-center flex-grow-0 row">
     <h1>Clavardage du CAI</h1>
-    <p class="alert alert-info" id="loadingmsg">Chargement de la connexion</p>
   </div>
   <div class="row flex-grow-1">
     <div class="col-3 h-100" id="client-container" style="border-right: 1px gray solid">
@@ -60,7 +65,8 @@
         <div class="flex-grow-0" id="message-form">
           <form class="d-flex" id="form">
             <div class="flex-grow-1 me-2">
-              <input placeholder="msg" class="form-control">
+              <input class="d-none" id="tech" value="1">
+              <input placeholder="Message" id="msg" class="form-control">
             </div>
             <button type="submit" class="btn btn-primary btn-sm rounded-circle">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cursor-fill" viewBox="0 0 16 16" style="position:relative;bottom:2px;"><path d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103z"/></svg>
@@ -68,9 +74,7 @@
           </form>
         </div>
         <div class="flex-grow-1" id="message-container">
-            <div id="log" class="overflow-auto"></div>
-          <p><b>Vous</b>: </p>
-          <p><b>Client</b>: </p>
+          <div id="log" class="overflow-auto"></div>
         </div>
         <a class="btn btn-primary" id="button_logout" href="/logout">Se déconnecter</a>
       </div>
