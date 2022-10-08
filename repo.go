@@ -49,6 +49,15 @@ func IsOnline(db *sql.DB, username string) bool {
 	return token != ""
 }
 
+func TechIsOnline(db *sql.DB) bool {
+	token := ""
+	err := db.QueryRow("SELECT token FROM users WHERE is_admin = 0 AND token IS NOT NULL").Scan(&token)
+	if err != nil {
+		return false
+	}
+	return token != ""
+}
+
 func GetUser(db *sql.DB, token string) string {
 	var user string
 	err := db.QueryRow("SELECT username FROM users WHERE token = ?", token).Scan(&user)
