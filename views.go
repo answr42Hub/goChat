@@ -78,7 +78,13 @@ func LoadTech(w http.ResponseWriter, r *http.Request) {
 	cookie, cookieError := r.Cookie("session")
 	usrMsg := "Bienvenue cher technicien "
 	if cookieError == nil {
-		usrMsg += GetUser(db, cookie.Value) + " !"
+		user := GetUser(db, cookie.Value)
+		if user != "" {
+			usrMsg += user + " !"
+		} else {
+			http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
+			return
+		}
 	}
 	vueStr = strings.Replace(vueStr, "###SUBTITLE###", usrMsg, 1)
 	vueStr = strings.Replace(vueStr, "###CONTENT###", homeStr, 1)

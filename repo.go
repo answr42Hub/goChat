@@ -67,6 +67,15 @@ func GetUser(db *sql.DB, token string) string {
 	return user
 }
 
+func GetUserId(db *sql.DB, username string) string {
+	var id string
+	err := db.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&id)
+	if err != nil {
+		return ""
+	}
+	return id
+}
+
 func GetUserByID(db *sql.DB, id string) string {
 	var user string
 	err := db.QueryRow("SELECT username FROM users WHERE id = ?", id).Scan(&user)
