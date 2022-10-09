@@ -174,3 +174,66 @@ func HashPassword(password string) string {
 	str := fmt.Sprintf("%x", bs)
 	return str
 }
+
+func CreateClients(db *sql.DB) {
+	query := "CREATE TABLE IF NOT EXISTS clients (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT)"
+	db.Prepare(query)
+
+	_, err := db.Exec(query)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func AddClient(db *sql.DB, token string) {
+	query := "INSERT INTO clients (token) VALUES (?)"
+	db.Prepare(query)
+
+	_, err := db.Exec(query, token)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func GetClient(db *sql.DB, token string) string {
+	var id string
+	err := db.QueryRow("SELECT id FROM clients WHERE token = ?", token).Scan(&id)
+	if err != nil {
+		return ""
+	}
+	return id
+}
+
+func GetClients(db *sql.DB) []string {
+	rows, err := db.Query("SELECT id FROM clients")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	clients := make([]string, 0)
+
+	for rows.Next() {
+		var token string
+		err = rows.Scan(&token)
+		if err != nil {
+			log.Fatal(err)
+		}
+		clients = append(clients, token)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil
+	}
+	return clients
+}
+
+func DropClients(db *sql.DB) {
+	query := "DROP TABLE clients"
+	db.Prepare(query)
+
+	_, err := db.Exec(query)
+	if err != nil {
+		return
+	}
+}

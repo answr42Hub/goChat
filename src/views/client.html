@@ -2,6 +2,7 @@
   window.onload = function () {
     var conn;
     var msg = document.getElementById("msg");
+    var id = document.getElementById("client");
     var log = document.getElementById("log");
 
     function appendLog(item) {
@@ -35,7 +36,12 @@
         var messages = evt.data.split('\n');
         for (var i = 0; i < messages.length; i++) {
           var item = document.createElement("div");
-          item.innerText = messages[i];
+            let messageId = messages[i].split(';');
+                if (messageId[0] === id.value) {
+                    item.innerText = "Vous: " + messageId[1];
+                } else if (messageId[0] === "tech") {
+                    item.innerText = "Tech: " + messageId[1];
+                }
           appendLog(item);
         }
       };
@@ -49,13 +55,13 @@
 <div class="container-fluid d-flex flex-column h-100">
   <div class="text-center flex-grow-0 row">
     <h1>Clavardage du CAI</h1>
-    <p class="alert alert-info" id="loadingmsg">Chargement de la connexion</p>
   </div>
   <div class="flex-grow-1">
     <div class="d-flex flex-column h-100">
       <div class="flex-grow-0" id="message-form">
         <form class="d-flex" id="form">
           <div class="flex-grow-1 me-2">
+            <input class="d-none" id="client" value="###ID###">
             <input placeholder="Message" id="msg" class="form-control">
           </div>
           <button type="submit" id="send" class="btn btn-primary btn-sm rounded-circle">
@@ -65,8 +71,6 @@
       </div>
       <div class="flex-grow-1" id="message-container">
         <div id="log" class="overflow-auto"></div>
-        <p><b>Client</b>: Coucou</p>
-        <p><b>Vous</b>: Coucou</p>
         <p class="text-muted"><b>Système</b>: Bienvenue au service d'aide en ligne du CAI! Comment pouvons-nous vous aider?</p>
       </div>
     </div>
