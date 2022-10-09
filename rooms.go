@@ -2,11 +2,12 @@ package main
 
 import (
 	"math/rand"
+	"strconv"
 	"time"
 )
 
 type Room struct {
-	id         int32
+	id         string
 	clients    map[*Clients]bool
 	broadcast  chan *Message
 	register   chan *Clients
@@ -22,7 +23,7 @@ type Message struct {
 func NewRoom() *Room {
 	rand.Seed(time.Now().UnixNano())
 	room := &Room{
-		id:         rand.Int31(),
+		id:         strconv.Itoa(rand.Intn(1000)),
 		broadcast:  make(chan *Message),
 		register:   make(chan *Clients),
 		unregister: make(chan *Clients),

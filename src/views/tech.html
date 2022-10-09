@@ -1,9 +1,19 @@
 <script>
+  var idBtn = "1"
   window.onload = function () {
     var conn;
     var msg = document.getElementById("msg");
-    var id = document.getElementById("tech");
+    var id = document.getElementById("client");
     var log = document.getElementById("log");
+
+    var btns = document.getElementsByTagName("button")
+
+    for (var i = 0; i < btns.length; i++) {
+        btns[i].addEventListener("click", function() {
+          idBtn = this.id
+          //location.reload()
+        })
+    }
 
     function appendLog(item) {
       var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
@@ -20,7 +30,7 @@
       if (!msg.value) {
         return false;
       }
-      conn.send(id.value + ";" + msg.value);
+      conn.send(msg.value);
       msg.value = "";
       return false;
     };
@@ -37,10 +47,10 @@
         for (var i = 0; i < messages.length; i++) {
           var item = document.createElement("div");
           let messageId = messages[i].split(';');
-            if (messageId[0] === "1") {
+            if (messageId[0] === id.value) {
                 item.innerText = "Vous: " + messageId[1];
-            } else {
-                item.innerText = "Client: " + messageId[1];
+            } else if (messageId[0] === idBtn) {
+                item.innerText = "Client[" + messageId[0] + "]: " + messageId[1];
             }
           appendLog(item);
         }
@@ -58,14 +68,14 @@
   </div>
   <div class="row flex-grow-1">
     <div class="col-3 h-100" id="client-container" style="border-right: 1px gray solid">
-      <button class="btn btn-primary" id="client-1">1</button>
+      ###CLIENTS###
     </div>
     <div class="col-9">
       <div class="d-flex flex-column h-100">
         <div class="flex-grow-0" id="message-form">
           <form class="d-flex" id="form">
             <div class="flex-grow-1 me-2">
-              <input class="d-none" id="tech" value="1">
+              <input class="d-none" id="client" value="tech">
               <input placeholder="Message" id="msg" class="form-control">
             </div>
             <button type="submit" class="btn btn-primary btn-sm rounded-circle">

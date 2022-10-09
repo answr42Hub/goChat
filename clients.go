@@ -68,7 +68,7 @@ func (c *Clients) sendMsg() {
 			if err != nil {
 				return
 			}
-			w.Write([]byte(message.Message))
+			w.Write([]byte(message.ClientID + ";" + message.Message))
 			if err := w.Close(); err != nil {
 				return
 			}
@@ -87,9 +87,19 @@ func ServeWs(room *Room, w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
+	id := "0"
+	cookie, err2 := r.Cookie("session")
+	if err2 == nil && cookie.Value != "" {
+		id = "tech"
+	}
+
+	cookieClient, err3 := r.Cookie("client")
+	if err3 == nil && cookieClient.Value != "" {
+		id = GetClient(db, cookieClient.Value)
+	}
 
 	client := &Clients{
-		id:   "1",
+		id:   id,
 		room: room,
 		conn: conn,
 		send: make(chan *Message, 256),
