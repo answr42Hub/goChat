@@ -2,8 +2,8 @@
   window.onload = function () {
     var conn;
     var msg = document.getElementById("msg");
-    var id = document.getElementById("client");
     var log = document.getElementById("log");
+    var id = document.getElementById("client");
 
     function appendLog(item) {
       var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
@@ -24,32 +24,28 @@
       msg.value = "";
       return false;
     };
-
-    if (window["WebSocket"]) {
-      conn = new WebSocket("ws://" + document.location.host + "/ws");
-      conn.onclose = function (evt) {
-        var item = document.createElement("div");
-        item.innerHTML = "<b>Connection closed.</b>";
-        appendLog(item);
-      };
-      conn.onmessage = function (evt) {
-        var messages = evt.data.split('\n');
-        for (var i = 0; i < messages.length; i++) {
-          var item = document.createElement("div");
-            let messageId = messages[i].split(';');
-                if (messageId[0] === id.value) {
-                    item.innerText = "Vous: " + messageId[1];
-                } else if (messageId[0] === "tech") {
-                    item.innerText = "Tech: " + messageId[1];
-                }
-          appendLog(item);
-        }
-      };
-    } else {
+    conn = new WebSocket("ws://" + document.location.host + "/ws?id=" + id.value);
+    conn.onclose = function (evt) {
       var item = document.createElement("div");
-      item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
+      item.innerHTML = "<b>Connection closed.</b>";
       appendLog(item);
-    }
+    };
+    conn.onmessage = function (evt) {
+      var messages = evt.data.split('\n');
+      for (var i = 0; i < messages.length; i++) {
+        var item = document.createElement("div");
+        let messageId = messages[i].split(';');
+        console.log(messageId);
+        if(messageId[0] !== "id") {
+          if (messageId[0] === id.value) {
+            item.innerText = "Vous: " + messageId[1];
+          } else if (messageId[0] === "tech") {
+            item.innerText = "Tech: " + messageId[1];
+          }
+        }
+        appendLog(item);
+      }
+    };
   };
 </script>
 <div class="container-fluid d-flex flex-column h-100">

@@ -15,6 +15,7 @@ func main() {
 	log.SetFlags(0)
 
 	room := NewRoom()
+
 	var err error
 	db, err = sql.Open("sqlite3", "./src/db/database.db")
 	if err != nil {
@@ -32,9 +33,11 @@ func main() {
 	http.HandleFunc("/edit", EditTech)
 	http.HandleFunc("/delete", DelTech)
 	http.HandleFunc("/tech", LoadTech)
-	http.HandleFunc("/client", LoadClient)
+	http.HandleFunc("/client", func(w http.ResponseWriter, r *http.Request) {
+		LoadClient(w, r)
+	})
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ServeWs(room, w, r)
+		ServeWs(room, w, r, r.URL.Query().Get("id"))
 	})
 	http.HandleFunc("/404", Load404)
 

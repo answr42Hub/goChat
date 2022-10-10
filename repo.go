@@ -175,6 +175,8 @@ func HashPassword(password string) string {
 	return str
 }
 
+/*
+
 func CreateClients(db *sql.DB) {
 	query := "CREATE TABLE IF NOT EXISTS clients (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT)"
 	db.Prepare(query)
@@ -237,3 +239,4 @@ func DropClients(db *sql.DB) {
 		return
 	}
 }
+*/

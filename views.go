@@ -2,7 +2,7 @@ package main
 
 import (
 	"io"
-	"math/rand"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -57,19 +57,10 @@ func LoadHome(w http.ResponseWriter, r *http.Request) {
 
 func LoadClient(w http.ResponseWriter, r *http.Request) {
 
-	id := ""
-	cookie, cookieError := r.Cookie("client")
-	if cookieError != nil {
-		token := HashPassword(RandStringBytes(32) + "client")
-		AddClient(db, token)
-		sessionCookie := http.Cookie{Name: "client", Value: token, HttpOnly: true}
-		http.SetCookie(w, &sessionCookie)
-		id = GetClient(db, token)
-	} else {
-		id = GetClient(db, cookie.Value)
-	}
+	id := r.RemoteAddr
 
-	rand.Seed(time.Now().UnixNano())
+	log.Println(id)
+
 	vue, _ := os.ReadFile("./src/views/template.html")
 	vueStr := string(vue)
 	client, _ := os.ReadFile("./src/views/client.html")
@@ -90,7 +81,7 @@ func LoadTech(w http.ResponseWriter, r *http.Request) {
 	if cookieError == nil {
 		user := GetUser(db, cookie.Value)
 		if user != "" && !UserIsAdmin(db, user) {
-			CreateClients(db)
+			//CreateClients(db)
 			usrMsg += user + " !"
 		} else {
 			http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
@@ -102,12 +93,6 @@ func LoadTech(w http.ResponseWriter, r *http.Request) {
 	home, _ := os.ReadFile("./src/views/tech.html")
 	homeStr := string(home)
 	vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
-	clients := GetClients(db)
-	btnClients := ""
-	for _, client := range clients {
-		btnClients += "<button class='btn btn-primary' id='" + client + "'>" + client + "</button>"
-	}
-	homeStr = strings.Replace(homeStr, "###CLIENTS###", btnClients, 1)
 	vueStr = strings.Replace(vueStr, "###SUBTITLE###", usrMsg, 1)
 	vueStr = strings.Replace(vueStr, "###CONTENT###", homeStr, 1)
 
@@ -260,7 +245,6 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		cookie.Expires = time.Unix(0, 0)
 		http.SetCookie(w, cookie)
 	}
-	DropClients(db)
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
 
