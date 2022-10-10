@@ -2,7 +2,6 @@ package main
 
 import (
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -58,8 +57,6 @@ func LoadHome(w http.ResponseWriter, r *http.Request) {
 func LoadClient(w http.ResponseWriter, r *http.Request) {
 
 	id := r.RemoteAddr
-
-	log.Println(id)
 
 	vue, _ := os.ReadFile("./src/views/template.html")
 	vueStr := string(vue)
