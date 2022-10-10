@@ -6,15 +6,15 @@
         var clients = [];
         var log = document.getElementById("log");
         var mapConv = new Map();
-        var chat = document.getElementById("chat");
 
         function loadChat() {
             let arrayChat = mapConv.get(id);
             if (arrayChat) {
-                chat.innerHTML = "";
+                log.innerHTML = "";
                 for (let i = 0; i < arrayChat.length; i++) {
-                    chat.innerHTML += arrayChat[i];
-                    log.appendChild(msg);
+                    let msg = document.createElement("div");
+                    msg.innerText = arrayChat[i];
+                    appendLog(msg);
                 }
             }
         }
@@ -66,15 +66,15 @@
                         }
                         if (messageId[0] === "tech") {
                             let array = mapConv.get(id);
-                            array.push("<p>Vous: " + messageId[1] + "</p>");
+                            array.push("Vous: " + messageId[1]);
                             mapConv.set[id] = array;
                         } else if (messageId[0] === id) {
                             let array = mapConv.get(id);
-                            array.push("<p>Client: " + messageId[1] + "</p>");
+                            array.push("Client: " + messageId[1]);
                             mapConv.set[id] = array;
                         } else if (mapConv.has(messageId[0])) {
                             let array = mapConv.get(messageId[0]);
-                            array.push("<p>Client: " + messageId[1] + "</p>");
+                            array.push("Client: " + messageId[1]);
                             mapConv.set[messageId[0]] = array;
                         }
                     }
@@ -119,9 +119,6 @@
                     </form>
                 </div>
                 <div class="flex-grow-1" id="message-container">
-                    <div class="flex-grow-1" id="chat">
-
-                    </div>
                     <div id="log" class="overflow-auto"></div>
                 </div>
                 <a class="btn btn-primary" id="button_logout" href="/logout">Se déconnecter</a>
