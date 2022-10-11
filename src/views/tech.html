@@ -1,93 +1,128 @@
 <script>
-  window.onload = function () {
-    var conn;
-    var msg = document.getElementById("msg");
+    window.onload = function () {
+        var conn;
+        var msg = document.getElementById("msg");
+        var id = "";
+        var clients = [];
+        var log = document.getElementById("log");
+        var mapConv = new Map();
 
-    var log = document.getElementById("log");
-
-    function appendLog(item) {
-      var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
-      log.appendChild(item);
-      if (doScroll) {
-        log.scrollTop = log.scrollHeight - log.clientHeight;
-      }
-    }
-
-    document.getElementById("form").onsubmit = function () {
-      if (!conn) {
-        return false;
-      }
-      if (!msg.value) {
-        return false;
-      }
-      conn.send(msg.value);
-      msg.value = "";
-      return false;
-    };
-
-    if (window["WebSocket"]) {
-      conn = new WebSocket("ws://" + document.location.host + "/ws?id=tech");
-      conn.onclose = function (evt) {
-        var item = document.createElement("div");
-        item.innerHTML = "<b>Connection closed.</b>";
-        appendLog(item);
-      };
-      conn.onmessage = function (evt) {
-        var messages = evt.data.split('\n');
-        for (var i = 0; i < messages.length; i++) {
-          var item = document.createElement("div");
-          let messageId = messages[i].split(';');
-          if(messageId[0] === "id" && messageId[1] !== "tech") {
-              let btn = document.createElement("button");
-              btn.innerHTML = messageId[1];
-              document.getElementById("clients").appendChild(btn);
-          } else if (messageId[0] === "tech") {
-                item.innerText = "Vous: " + messageId[1];
-          } else if (messageId[0] !== "id") {
-                item.innerText = "Client[" + messageId[0] + "]: " + messageId[1];
-          }
-          appendLog(item);
+        function loadChat() {
+            let arrayChat = mapConv.get(id);
+            if (arrayChat) {
+                log.innerHTML = "";
+                for (let i = 0; i < arrayChat.length; i++) {
+                    let msg = document.createElement("div");
+                    msg.innerText = arrayChat[i];
+                    appendLog(msg);
+                }
+            }
         }
-      };
-    } else {
-      var item = document.createElement("div");
-      item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
-      appendLog(item);
-    }
-  };
+
+        document.getElementById("form").onsubmit = function () {
+            if (!conn) {
+                return false;
+            }
+            if (!msg.value) {
+                return false;
+            }
+            conn.send(msg.value+";"+id);
+            msg.value = "";
+            return false;
+        };
+
+        function appendLog(item) {
+            var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
+            log.appendChild(item);
+            if (doScroll) {
+                log.scrollTop = log.scrollHeight - log.clientHeight;
+            }
+        }
+
+        if (window["WebSocket"]) {
+            conn = new WebSocket("ws://" + document.location.host + "/ws?id=tech");
+            conn.onclose = function (evt) {
+                var item = document.createElement("div");
+                item.innerHTML = "<b>Connection closed.</b>";
+                appendLog(item);
+            };
+            conn.onmessage = function (evt) {
+                var messages = evt.data.split('\n');
+                for (var i = 0; i < messages.length; i++) {
+                    let messageId = messages[i].split(';');
+                    if (messageId.length > 2 && messageId[2] === "connected") {
+                        clients.push(messageId[0]);
+                        mapConv.set(messageId[0], []);
+                        let btn = document.createElement("button");
+                        btn.innerHTML = clients.length.toString();
+                        btn.addEventListener("click", function () {
+                            id = clients[this.innerHTML - 1];
+                            loadChat()
+                        });
+                        document.getElementById("clients").appendChild(btn);
+                    } else {
+                        if (id === "" && clients.length > 0) {
+                            id = clients[0];
+                        }
+                        if (messageId[0] === "tech") {
+                            let array = mapConv.get(id);
+                            array.push("Vous: " + messageId[1]);
+                            mapConv.set[id] = array;
+                        } else if (messageId[0] === id) {
+                            let array = mapConv.get(id);
+                            array.push("Client: " + messageId[1]);
+                            mapConv.set[id] = array;
+                        } else if (mapConv.has(messageId[0])) {
+                            let array = mapConv.get(messageId[0]);
+                            array.push("Client: " + messageId[1]);
+                            mapConv.set[messageId[0]] = array;
+                        }
+                    }
+                    loadChat()
+                }
+            };
+        } else {
+            var item = document.createElement("div");
+            item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
+            appendLog(item);
+        }
+    };
 </script>
 <div class="container-fluid d-flex flex-column h-100">
-  <div class="text-center flex-grow-0 row">
-    <h1>Clavardage du CAI</h1>
-  </div>
-  <div class="row flex-grow-1">
-    <div class="col-3 h-100" id="client-container" style="border-right: 1px gray solid">
-        <div class="d-flex flex-column h-100">
-            <div class="flex-grow-0">
-            <h2>Clients</h2>
-            </div>
-            <div class="flex-grow-1" id="clients">
+    <div class="text-center flex-grow-0 row">
+        <h1>Clavardage du CAI</h1>
+    </div>
+    <div class="row flex-grow-1">
+        <div class="col-3 h-100" id="client-container" style="border-right: 1px gray solid">
+            <div class="d-flex flex-column h-100">
+                <div class="flex-grow-0">
+                    <h2>Clients</h2>
+                </div>
+                <div class="flex-grow-1" id="clients">
 
+                </div>
+            </div>
+        </div>
+        <div class="col-9">
+            <div class="d-flex flex-column h-100">
+                <div class="flex-grow-0" id="message-form">
+                    <form class="d-flex" id="form">
+                        <div class="flex-grow-1 me-2">
+                            <input placeholder="Message" id="msg" class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm rounded-circle">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                 class="bi bi-cursor-fill" viewBox="0 0 16 16" style="position:relative;bottom:2px;">
+                                <path d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103z"/>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+                <div class="flex-grow-1" id="message-container">
+                    <div id="log" class="overflow-auto"></div>
+                </div>
+                <a class="btn btn-primary" id="button_logout" href="/logout">Se déconnecter</a>
             </div>
         </div>
     </div>
-    <div class="col-9">
-      <div class="d-flex flex-column h-100">
-        <div class="flex-grow-0" id="message-form">
-          <form class="d-flex" id="form">
-            <div class="flex-grow-1 me-2">
-              <input placeholder="Message" id="msg" class="form-control">
-            </div>
-            <button type="submit" class="btn btn-primary btn-sm rounded-circle">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cursor-fill" viewBox="0 0 16 16" style="position:relative;bottom:2px;"><path d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103z"/></svg>
-            </button>
-          </form>
-        </div>
-        <div class="flex-grow-1" id="message-container">
-          <div id="log" class="overflow-auto"></div>
-        </div>
-        <a class="btn btn-primary" id="button_logout" href="/logout">Se déconnecter</a>
-      </div>
-    </div>
-  </div>
 </div>
