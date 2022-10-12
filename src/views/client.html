@@ -1,15 +1,32 @@
 <script>
+
   window.onload = function () {
     var conn;
     var msg = document.getElementById("msg");
+    var chat = document.getElementById("chat");
     var log = document.getElementById("log");
     var id = document.getElementById("client");
+
+    var btnQuit = document.getElementById("quit");
+    btnQuit.onclick = function () {
+      conn.send(id.value+";disconnected");
+      conn.close();
+      window.location.href = "http://localhost:8080/";
+    };
 
     function appendLog(item) {
       var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
       log.appendChild(item);
       if (doScroll) {
         log.scrollTop = log.scrollHeight - log.clientHeight;
+      }
+    }
+
+    function appendChat(item) {
+      var doScroll = chat.scrollTop > chat.scrollHeight - chat.clientHeight - 1;
+      chat.appendChild(item);
+      if (doScroll) {
+        chat.scrollTop = chat.scrollHeight - chat.clientHeight;
       }
     }
 
@@ -25,6 +42,7 @@
       return false;
     };
     conn = new WebSocket("ws://" + document.location.host + "/ws?id=" + id.value);
+
     conn.onopen = function (evt) {
       conn.send(id.value+";connected")
     };
@@ -32,18 +50,21 @@
       var item = document.createElement("div");
       item.innerHTML = "<b>Connection closed.</b>";
       appendLog(item);
+
     };
     conn.onmessage = function (evt) {
       var messages = evt.data.split('\n');
       for (var i = 0; i < messages.length; i++) {
-        var item = document.createElement("div");
+        var msgElement = document.createElement("div");
         let messageId = messages[i].split(';');
         if(messageId.length > 2 && messageId[2] === id.value){
-          item.innerText = "Tech: " + messageId[1];
+          msgElement.className = "d-flex flex-row mx-5";
+          msgElement.innerHTML = "<div class='card bg-secondary text-white fs-5 mb-1 p-2'><b class='mx-2'>" + "Tech: " + messageId[1] + "</b></div>";
         } else if (messageId.length === 2 && messageId[0] === id.value) {
-          item.innerText = "Vous: " + messageId[1];
+          msgElement.className = "d-flex flex-row-reverse mx-5";
+          msgElement.innerHTML = "<div class='card bg-primary text-white fs-5 mb-1 p-2 '><b class='mx-2'>" + "Vous: " + messageId[1] + "</b></div>";
         }
-        appendLog(item);
+        appendChat(msgElement);
       }
     };
   };
@@ -55,6 +76,10 @@
   <div class="flex-grow-1">
     <div class="d-flex flex-column h-100">
       <div class="flex-grow-0" id="message-form">
+        <div class="flex-grow-1" id="chat">
+
+        </div>
+        <div id="log" class="overflow-auto"></div>
         <form class="d-flex" id="form">
           <div class="flex-grow-1 me-2">
             <input class="d-none" id="client" value="###ID###">
@@ -64,11 +89,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cursor-fill" viewBox="0 0 16 16" style="position:relative;bottom:2px;"><path d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103z"/></svg>
           </button>
         </form>
+        <button class="btn btn-danger" id="quit">Quitter</button>
       </div>
-      <div class="flex-grow-1" id="message-container">
-        <div id="log" class="overflow-auto"></div>
-        <p class="text-muted"><b>Système</b>: Bienvenue au service d'aide en ligne du CAI! Comment pouvons-nous vous aider?</p>
-      </div>
+      <p class="text-muted"><b>Système</b>: Bienvenue au service d'aide en ligne du CAI! Comment pouvons-nous vous aider?</p>
     </div>
   </div>
 </div>

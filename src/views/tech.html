@@ -1,20 +1,31 @@
 <script>
     window.onload = function () {
         var conn;
-        var msg = document.getElementById("msg");
         var id = "";
+        var clientIndex = 0;
         var clients = [];
+        var chat = document.getElementById("chat");
         var log = document.getElementById("log");
         var mapConv = new Map();
 
         function loadChat() {
             let arrayChat = mapConv.get(id);
+            chat.innerHTML = "";
             if (arrayChat) {
-                log.innerHTML = "";
                 for (let i = 0; i < arrayChat.length; i++) {
+                    let text = arrayChat[i];
                     let msg = document.createElement("div");
-                    msg.innerText = arrayChat[i];
-                    appendLog(msg);
+
+                    if (text.includes("Vous:")) {
+                        msg.className = "d-flex flex-row-reverse mx-5";
+                        msg.innerHTML = "<div class='card bg-primary text-white fs-5 mb-1 p-2 '><b class='mx-2'>" + arrayChat[i] + "</b></div>";
+                    } else {
+                        msg.className = "d-flex flex-row mx-5";
+                        msg.innerHTML = "<div class='card bg-secondary text-white fs-5 mb-1 p-2'><b class='mx-2'>" + arrayChat[i] + "</b></div>";
+                    }
+
+                    appendChat(msg);
+
                 }
             }
         }
@@ -26,7 +37,10 @@
             if (!msg.value) {
                 return false;
             }
-            conn.send(msg.value+";"+id);
+            if (id === "" && clients.length > 0) {
+                id = clients[0];
+            }
+            conn.send(msg.value + ";" + id);
             msg.value = "";
             return false;
         };
@@ -39,53 +53,73 @@
             }
         }
 
-        if (window["WebSocket"]) {
-            conn = new WebSocket("ws://" + document.location.host + "/ws?id=tech");
-            conn.onclose = function (evt) {
-                var item = document.createElement("div");
-                item.innerHTML = "<b>Connection closed.</b>";
-                appendLog(item);
-            };
-            conn.onmessage = function (evt) {
-                var messages = evt.data.split('\n');
-                for (var i = 0; i < messages.length; i++) {
-                    let messageId = messages[i].split(';');
-                    if (messageId.length > 2 && messageId[2] === "connected") {
+        function appendChat(item) {
+            var doScroll = chat.scrollTop > chat.scrollHeight - chat.clientHeight - 1;
+            chat.appendChild(item);
+            if (doScroll) {
+                chat.scrollTop = chat.scrollHeight - chat.clientHeight;
+            }
+        }
+
+        conn = new WebSocket("ws://" + document.location.host + "/ws?id=tech");
+        conn.onclose = function (evt) {
+            var item = document.createElement("div");
+            item.innerHTML = "<b>Connection closed.</b>";
+            appendLog(item);
+        };
+        conn.onmessage = function (evt) {
+            var messages = evt.data.split('\n');
+            for (var i = 0; i < messages.length; i++) {
+
+                if (id === "" && clients.length > 0) {
+                    id = clients[0];
+                }
+
+                let messageId = messages[i].split(';');
+                if (messageId.length > 2 && messageId[2] === "connected") {
+                    if (!mapConv.has(messageId[0])) {
+                        clientIndex++;
                         clients.push(messageId[0]);
                         mapConv.set(messageId[0], []);
                         let btn = document.createElement("button");
-                        btn.innerHTML = clients.length.toString();
+                        btn.innerHTML = "Client " + clientIndex.toString();
+                        btn.id = "btn-" + messageId[0];
+                        btn.className = "btn btn-warning mt-2";
                         btn.addEventListener("click", function () {
-                            id = clients[this.innerHTML - 1];
+                            id = messageId[0];
                             loadChat()
                         });
                         document.getElementById("clients").appendChild(btn);
-                    } else {
-                        if (id === "" && clients.length > 0) {
-                            id = clients[0];
-                        }
-                        if (messageId[0] === "tech") {
-                            let array = mapConv.get(id);
-                            array.push("Vous: " + messageId[1]);
-                            mapConv.set[id] = array;
-                        } else if (messageId[0] === id) {
-                            let array = mapConv.get(id);
-                            array.push("Client: " + messageId[1]);
-                            mapConv.set[id] = array;
-                        } else if (mapConv.has(messageId[0])) {
-                            let array = mapConv.get(messageId[0]);
-                            array.push("Client: " + messageId[1]);
-                            mapConv.set[messageId[0]] = array;
-                        }
                     }
-                    loadChat()
+                } else if (messageId.length > 2 && messageId[2] === "disconnected") {
+                    if (mapConv.has(messageId[1])) {
+                        let discMsg = document.createElement("div");
+                        let btn = document.getElementById("btn-" + messageId[0]);
+                        discMsg.innerText = btn.innerText + " déconnecté";
+                        appendLog(discMsg);
+
+                        mapConv.delete(messageId[0]);
+                        clients.splice(clients.indexOf(messageId[0]), 1);
+                        btn.remove();
+                    }
+                } else {
+                    if (messageId[0] === "tech") {
+                        let array = mapConv.get(id);
+                        array.push("Vous: " + messageId[1]);
+                        mapConv.set[id] = array;
+                    } else if (messageId[0] === id) {
+                        let array = mapConv.get(id);
+                        array.push("Client: " + messageId[1]);
+                        mapConv.set[id] = array;
+                    } else if (mapConv.has(messageId[0])) {
+                        let array = mapConv.get(messageId[0]);
+                        array.push("Client: " + messageId[1]);
+                        mapConv.set[messageId[0]] = array;
+                    }
                 }
-            };
-        } else {
-            var item = document.createElement("div");
-            item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
-            appendLog(item);
-        }
+                loadChat()
+            }
+        };
     };
 </script>
 <div class="container-fluid d-flex flex-column h-100">
@@ -106,6 +140,10 @@
         <div class="col-9">
             <div class="d-flex flex-column h-100">
                 <div class="flex-grow-0" id="message-form">
+                    <div class="flex-grow-1" id="chat">
+
+                    </div>
+                    <div id="log" class="container-fluid"></div>
                     <form class="d-flex" id="form">
                         <div class="flex-grow-1 me-2">
                             <input placeholder="Message" id="msg" class="form-control">
@@ -117,11 +155,8 @@
                             </svg>
                         </button>
                     </form>
+                    <a class="btn btn-danger mt-2" id="button_logout" href="/logout">Quitter</a>
                 </div>
-                <div class="flex-grow-1" id="message-container">
-                    <div id="log" class="overflow-auto"></div>
-                </div>
-                <a class="btn btn-primary" id="button_logout" href="/logout">Se déconnecter</a>
             </div>
         </div>
     </div>
