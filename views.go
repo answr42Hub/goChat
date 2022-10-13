@@ -119,7 +119,14 @@ func LoadAdmin(w http.ResponseWriter, r *http.Request) {
 				list += "<div class='mt-2 mx-2'><div class='card' style='width: 18rem;'><div class='card-body'><h5 class='card-title'>" + user + "</h5><p class='card-text'>" + onlineStr + "</p><a class='btn btn-warning' href='/edittech?id=" + id + "'>Modifier</a><a class='btn btn-danger' href='/delete?id=" + id + "'>Supprimer</a></div></div></div>"
 			}
 
+			techConn := GetTechConn(db)
+			connList := ""
+			for user, dates := range techConn {
+				connList += "<li>" + user + " : " + dates + "</li>"
+			}
+
 			adminStr = strings.Replace(adminStr, "###LIST###", list, 1)
+			adminStr = strings.Replace(adminStr, "###CONN###", connList, 1)
 			vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
 			vueStr = strings.Replace(vueStr, "###SUBTITLE###", "Bienvenue cher administrateur", 1)
 			vueStr = strings.Replace(vueStr, "###CONTENT###", adminStr, 1)
@@ -219,6 +226,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			} else {
 				token := HashPassword(RandStringBytes(32) + user)
 				Connect(db, user, token)
+				AddTechConn(db, user, time.Now().Unix())
 				sessionCookie := http.Cookie{Name: "session", Value: token, HttpOnly: true}
 				http.SetCookie(w, &sessionCookie)
 				http.Redirect(w, r, "/tech", http.StatusTemporaryRedirect)
@@ -237,6 +245,9 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		user := GetUser(db, cookie.Value)
 		if user != "" {
 			Disconnect(db, user)
+			if !UserIsAdmin(db, user) {
+				AddTechEnd(db, user, time.Now().Unix())
+			}
 		}
 		cookie.Value = "Unuse"
 		cookie.Expires = time.Unix(0, 0)

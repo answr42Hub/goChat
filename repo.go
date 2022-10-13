@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"time"
 )
 
 func UserExists(db *sql.DB, username string) bool {
@@ -136,6 +137,60 @@ func CheckPassword(db *sql.DB, username string, password string) bool {
 		log.Fatal(err)
 	}
 	return hashedPassword == HashPassword(password)
+}
+
+func AddTechConn(db *sql.DB, username string, begin int64) {
+	query := "INSERT INTO tech_conn (tech_name, conn_begin) VALUES (?, ?)"
+	db.Prepare(query)
+
+	_, err := db.Exec(query, username, begin)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func AddTechEnd(db *sql.DB, username string, end int64) {
+	query := "UPDATE tech_conn SET conn_end = ? WHERE tech_name = ?"
+	db.Prepare(query)
+
+	_, err := db.Exec(query, end, username)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func GetTechConn(db *sql.DB) map[string]string {
+	rows, err := db.Query("SELECT * FROM tech_conn")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	techs := make(map[string]string)
+
+	for rows.Next() {
+		var tech string
+		var begin int64
+		var end int64
+		err = rows.Scan(&tech, &begin, &end)
+		if err != nil {
+			log.Fatal(err)
+		}
+		beginStr := time.Unix(begin, 0).Format("2006-01-02 15:04:05")
+		endStr := ""
+		if end == 0 {
+			endStr = "Encore connecté."
+		} else {
+			endStr = time.Unix(end, 0).Format("2006-01-02 15:04:05")
+		}
+
+		techs[tech] = beginStr + " @ " + endStr
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return techs
 }
 
 func Connect(db *sql.DB, username string, token string) {
