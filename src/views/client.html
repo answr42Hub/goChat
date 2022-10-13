@@ -5,11 +5,10 @@
     var msg = document.getElementById("msg");
     var chat = document.getElementById("chat");
     var log = document.getElementById("log");
-    var id = document.getElementById("client");
 
     var btnQuit = document.getElementById("quit");
     btnQuit.onclick = function () {
-      conn.send(id.value+";disconnected");
+      conn.send("disconnected");
       conn.close();
       window.location.href = "http://localhost:8080/";
     };
@@ -37,14 +36,19 @@
       if (!msg.value) {
         return false;
       }
-      conn.send(msg.value);
+      conn.send(JSON.stringify({id: "client", textMsg: msg.value, destId: "tech"}));
+
+      let msgElement = document.createElement("div");
+
+      msgElement.className = "d-flex flex-row-reverse";
+      msgElement.innerHTML = "<div class='card bg-primary text-white fs-5 mb-1 p-2'><b>" + "Vous: " + msg.value + "</b></div>";
       msg.value = "";
       return false;
     };
-    conn = new WebSocket("ws://" + document.location.host + "/ws?id=" + id.value);
+    conn = new WebSocket("ws://" + document.location.host + "/clientWS");
 
     conn.onopen = function (evt) {
-      conn.send(id.value+";connected")
+      conn.send(JSON.stringify({id: "client", textMsg: "connected", destId: "tech"}));
     };
     conn.onclose = function (evt) {
       var item = document.createElement("div");
@@ -53,19 +57,15 @@
 
     };
     conn.onmessage = function (evt) {
-      var messages = evt.data.split('\n');
-      for (var i = 0; i < messages.length; i++) {
-        var msgElement = document.createElement("div");
-        let messageId = messages[i].split(';');
-        if(messageId.length > 2 && messageId[2] === id.value){
-          msgElement.className = "d-flex flex-row mx-5";
-          msgElement.innerHTML = "<div class='card bg-secondary text-white fs-5 mb-1 p-2'><b class='mx-2'>" + "Tech: " + messageId[1] + "</b></div>";
-        } else if (messageId.length === 2 && messageId[0] === id.value) {
-          msgElement.className = "d-flex flex-row-reverse mx-5";
-          msgElement.innerHTML = "<div class='card bg-primary text-white fs-5 mb-1 p-2 '><b class='mx-2'>" + "Vous: " + messageId[1] + "</b></div>";
-        }
+      let messages = JSON.parse(evt.data);
+
+      console.log(messages);
+        let msgElement = document.createElement("div");
+
+        msgElement.className = "d-flex flex-row";
+        msgElement.innerHTML = "<div class='card bg-secondary text-white fs-5 mb-1 p-2'><b>" + "Tech: " + messages.textMsg + "</b></div>";
+
         appendChat(msgElement);
-      }
     };
   };
 </script>
@@ -83,13 +83,13 @@
         <form class="d-flex" id="form">
           <div class="flex-grow-1 me-2">
             <input class="d-none" id="client" value="###ID###">
-            <input placeholder="Message" id="msg" class="form-control">
+            <input placeholder="Message" id="msg" class="form-control mt-2">
           </div>
           <button type="submit" id="send" class="btn btn-primary btn-sm rounded-circle">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cursor-fill" viewBox="0 0 16 16" style="position:relative;bottom:2px;"><path d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103z"/></svg>
           </button>
         </form>
-        <button class="btn btn-danger" id="quit">Quitter</button>
+        <button class="btn btn-danger mt-2" id="quit">Quitter</button>
       </div>
       <p class="text-muted"><b>Système</b>: Bienvenue au service d'aide en ligne du CAI! Comment pouvons-nous vous aider?</p>
     </div>

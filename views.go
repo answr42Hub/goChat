@@ -54,16 +54,13 @@ func LoadHome(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, vueStr)
 }
 
-func LoadClient(w http.ResponseWriter, r *http.Request) {
-
-	id := r.RemoteAddr
+func LoadClient(w http.ResponseWriter, r *http.Request, id int) {
 
 	vue, _ := os.ReadFile("./src/views/template.html")
 	vueStr := string(vue)
 	client, _ := os.ReadFile("./src/views/client.html")
 	clientStr := string(client)
-	clientStr = strings.Replace(clientStr, "###ID###", id, 1)
-
+	clientStr = strings.Replace(clientStr, "###ID###", string(id), 1)
 	vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
 	vueStr = strings.Replace(vueStr, "###SUBTITLE###", "Attendez, un technicien est sur le point de vous aider !", 1)
 	vueStr = strings.Replace(vueStr, "###CONTENT###", clientStr, 1)
@@ -78,23 +75,25 @@ func LoadTech(w http.ResponseWriter, r *http.Request) {
 	if cookieError == nil {
 		user := GetUser(db, cookie.Value)
 		if user != "" && !UserIsAdmin(db, user) {
-			//CreateClients(db)
 			usrMsg += user + " !"
 		} else {
 			http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
 			return
 		}
-	}
-	vue, _ := os.ReadFile("./src/views/template.html")
-	vueStr := string(vue)
-	home, _ := os.ReadFile("./src/views/tech.html")
-	homeStr := string(home)
-	vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
-	vueStr = strings.Replace(vueStr, "###SUBTITLE###", usrMsg, 1)
-	vueStr = strings.Replace(vueStr, "###CONTENT###", homeStr, 1)
+		vue, _ := os.ReadFile("./src/views/template.html")
+		vueStr := string(vue)
+		home, _ := os.ReadFile("./src/views/tech.html")
+		homeStr := string(home)
+		vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
+		vueStr = strings.Replace(vueStr, "###SUBTITLE###", usrMsg, 1)
+		vueStr = strings.Replace(vueStr, "###CONTENT###", homeStr, 1)
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	io.WriteString(w, vueStr)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		io.WriteString(w, vueStr)
+	} else {
+		http.Redirect(w, r, "/404", http.StatusTemporaryRedirect)
+		return
+	}
 }
 
 func LoadAdmin(w http.ResponseWriter, r *http.Request) {

@@ -6,6 +6,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 var db *sql.DB
@@ -14,7 +15,8 @@ func main() {
 	flag.Parse()
 	log.SetFlags(0)
 
-	room := NewRoom()
+	var clients = make(map[string]chan Message)
+	var tech = make(chan Message)
 
 	var err error
 	db, err = sql.Open("sqlite3", "./src/db/database.db")
@@ -22,6 +24,8 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
+
+	numclients := 0
 
 	http.HandleFunc("/", LoadHome)
 	http.HandleFunc("/login", Login)
@@ -34,11 +38,18 @@ func main() {
 	http.HandleFunc("/delete", DelTech)
 	http.HandleFunc("/tech", LoadTech)
 	http.HandleFunc("/client", func(w http.ResponseWriter, r *http.Request) {
-		LoadClient(w, r)
+		numclients++
+		clients[strconv.Itoa(numclients)] = make(chan Message)
+		LoadClient(w, r, numclients)
 	})
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ServeWs(room, w, r, r.URL.Query().Get("id"))
+	http.HandleFunc("/techWS", func(w http.ResponseWriter, r *http.Request) {
+		ServeTechWs(w, r, clients, tech)
 	})
+
+	http.HandleFunc("/clientWS", func(w http.ResponseWriter, r *http.Request) {
+		ServeClientWs(w, r, tech, clients, numclients)
+	})
+
 	http.HandleFunc("/404", Load404)
 
 	fileServer := http.FileServer(http.Dir("./src/assets"))

@@ -1,15 +1,16 @@
 <script>
     window.onload = function () {
         var conn;
-        var id = "";
         var clientIndex = 0;
+        var client = "";
         var clients = [];
+        let msg = document.getElementById("msg");
         var chat = document.getElementById("chat");
         var log = document.getElementById("log");
         var mapConv = new Map();
 
         function loadChat() {
-            let arrayChat = mapConv.get(id);
+            let arrayChat = mapConv.get(client);
             chat.innerHTML = "";
             if (arrayChat) {
                 for (let i = 0; i < arrayChat.length; i++) {
@@ -17,15 +18,14 @@
                     let msg = document.createElement("div");
 
                     if (text.includes("Vous:")) {
-                        msg.className = "d-flex flex-row-reverse mx-5";
-                        msg.innerHTML = "<div class='card bg-primary text-white fs-5 mb-1 p-2 '><b class='mx-2'>" + arrayChat[i] + "</b></div>";
+                        msg.className = "d-flex flex-row-reverse";
+                        msg.innerHTML = "<div class='card bg-primary text-white fs-5 mb-1 p-2 '><b>" + arrayChat[i] + "</b></div>";
                     } else {
-                        msg.className = "d-flex flex-row mx-5";
-                        msg.innerHTML = "<div class='card bg-secondary text-white fs-5 mb-1 p-2'><b class='mx-2'>" + arrayChat[i] + "</b></div>";
+                        msg.className = "d-flex flex-row";
+                        msg.innerHTML = "<div class='card bg-secondary text-white fs-5 mb-1 p-2'><b>" + arrayChat[i] + "</b></div>";
                     }
 
                     appendChat(msg);
-
                 }
             }
         }
@@ -37,11 +37,18 @@
             if (!msg.value) {
                 return false;
             }
-            if (id === "" && clients.length > 0) {
-                id = clients[0];
+            if (client === "" && clients.length > 0) {
+                client = clients[0];
             }
-            conn.send(msg.value + ";" + id);
+
+            let strMsg = JSON.stringify({id: "tech", textMsg: msg.value, destId: client});
+
+            conn.send(strMsg);
+            let array = mapConv.get(client);
+            array.push("Vous: " + msg.value);
+            mapConv.set[client] = array;
             msg.value = "";
+            loadChat();
             return false;
         };
 
@@ -61,63 +68,38 @@
             }
         }
 
-        conn = new WebSocket("ws://" + document.location.host + "/ws?id=tech");
+        conn = new WebSocket("ws://" + document.location.host + "/techWS");
         conn.onclose = function (evt) {
             var item = document.createElement("div");
             item.innerHTML = "<b>Connection closed.</b>";
             appendLog(item);
         };
         conn.onmessage = function (evt) {
-            var messages = evt.data.split('\n');
-            for (var i = 0; i < messages.length; i++) {
+            let messages = JSON.parse(evt.data);
 
-                if (id === "" && clients.length > 0) {
-                    id = clients[0];
+            if (!mapConv.has(messages.id)) {
+                clientIndex++;
+                clients.push(messages.id);
+                mapConv.set(messages.id, ["Client: " + messages.message]);
+                let btn = document.createElement("button");
+                btn.textContent = "Client " + clientIndex.toString();
+                btn.id = "btn-" + messages.id;
+                btn.className = "btn btn-warning mt-2";
+                btn.addEventListener("click", function () {
+                    client = messages.id;
+                    loadChat()
+                });
+                document.getElementById("clients").appendChild(btn);
+                if (client === "" && clients.length > 0) {
+                    client = clients[0];
                 }
-
-                let messageId = messages[i].split(';');
-                if (messageId.length > 2 && messageId[2] === "connected") {
-                    if (!mapConv.has(messageId[0])) {
-                        clientIndex++;
-                        clients.push(messageId[0]);
-                        mapConv.set(messageId[0], []);
-                        let btn = document.createElement("button");
-                        btn.innerHTML = "Client " + clientIndex.toString();
-                        btn.id = "btn-" + messageId[0];
-                        btn.className = "btn btn-warning mt-2";
-                        btn.addEventListener("click", function () {
-                            id = messageId[0];
-                            loadChat()
-                        });
-                        document.getElementById("clients").appendChild(btn);
-                    }
-                } else if (messageId.length > 2 && messageId[2] === "disconnected") {
-                    if (mapConv.has(messageId[1])) {
-                        let discMsg = document.createElement("div");
-                        let btn = document.getElementById("btn-" + messageId[0]);
-                        discMsg.innerText = btn.innerText + " déconnecté";
-                        appendLog(discMsg);
-
-                        mapConv.delete(messageId[0]);
-                        clients.splice(clients.indexOf(messageId[0]), 1);
-                        btn.remove();
-                    }
-                } else {
-                    if (messageId[0] === "tech") {
-                        let array = mapConv.get(id);
-                        array.push("Vous: " + messageId[1]);
-                        mapConv.set[id] = array;
-                    } else if (messageId[0] === id) {
-                        let array = mapConv.get(id);
-                        array.push("Client: " + messageId[1]);
-                        mapConv.set[id] = array;
-                    } else if (mapConv.has(messageId[0])) {
-                        let array = mapConv.get(messageId[0]);
-                        array.push("Client: " + messageId[1]);
-                        mapConv.set[messageId[0]] = array;
-                    }
+            } else {
+                let array = mapConv.get(messages.id);
+                array.push("Client: " + messages.message);
+                mapConv.set(messages.id, array);
+                if (client === messages.id) {
+                    loadChat();
                 }
-                loadChat()
             }
         };
     };

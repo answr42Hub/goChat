@@ -1,17 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
-	"time"
-)
-
-const (
-	writeWait      = 10 * time.Second
-	pongWait       = 60 * time.Second
-	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 512
+	"strconv"
 )
 
 var upgrader = websocket.Upgrader{
@@ -22,82 +16,93 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-type Clients struct {
-	id   string
-	room *Room
-	conn *websocket.Conn
-	send chan *Message
+type Message struct {
+	Id      string `json:"id"`
+	TextMsg string `json:"textMsg"`
+	DestId  string `json:"destId"`
 }
 
-func (c *Clients) receiveMsg() {
-	defer func() {
-		c.room.unregister <- c
-		c.conn.Close()
-	}()
-	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
-	for {
-		_, message, err := c.conn.ReadMessage()
-		if err != nil {
-			break
-		}
-		c.room.broadcast <- &Message{
-			Message:  string(message),
-			Type:     "text",
-			ClientID: c.id,
-		}
-	}
-}
-
-func (c *Clients) sendMsg() {
-	ticker := time.NewTicker(pingPeriod)
-	defer func() {
-		ticker.Stop()
-		c.conn.Close()
-	}()
-	for {
-		select {
-		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-			w, err := c.conn.NextWriter(websocket.TextMessage)
-			if err != nil {
-				return
-			}
-			w.Write([]byte(message.ClientID + ";" + message.Message))
-			if err := w.Close(); err != nil {
-				return
-			}
-		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return
-			}
-		}
-	}
-}
-
-func ServeWs(room *Room, w http.ResponseWriter, r *http.Request, id string) {
+func ServeTechWs(w http.ResponseWriter, r *http.Request, clients map[string]chan Message, Tech <-chan Message) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+	w.Header().Add("Content-Type", "text/json")
+	var clientDisc = make(chan bool)
+	defer close(clientDisc)
 
-	client := &Clients{
-		id:   id,
-		room: room,
-		conn: conn,
-		send: make(chan *Message, 256),
+	go func() {
+		defer func() { clientDisc <- true }()
+		var message Message
+		for {
+			msgType, msg, err := conn.ReadMessage()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			if msgType == websocket.CloseMessage {
+				log.Println("Client disconnected")
+				return
+			}
+
+			err = json.Unmarshal(msg, &message)
+			id := message.Id
+			conn.WriteJSON(message)
+			clients[id] <- message
+		}
+	}()
+
+	for {
+		select {
+		case msg := <-Tech:
+			conn.WriteJSON(msg)
+		case <-clientDisc:
+			return
+		}
 	}
 
-	client.room.register <- client
+}
 
-	go client.receiveMsg()
-	go client.sendMsg()
+func ServeClientWs(w http.ResponseWriter, r *http.Request, tech chan<- Message, clients map[string]chan Message, id int) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	w.Header().Add("Content-Type", "text/json")
+	defer conn.Close()
+	var clientDisc = make(chan bool)
+	client := clients[strconv.Itoa(id)]
+	defer close(clientDisc)
+
+	go func() {
+		defer func() { clientDisc <- true }()
+		var message Message
+		for {
+			msgType, msg, err := conn.ReadMessage()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			if msgType == websocket.CloseMessage {
+				log.Println("Closed connexion")
+				return
+			}
+
+			err = json.Unmarshal(msg, &message)
+			conn.WriteJSON(message)
+			tech <- message
+		}
+	}()
+
+	for {
+		select {
+		case msg := <-client:
+			conn.WriteJSON(msg)
+		case <-clientDisc:
+			return
+		}
+	}
 
 }
