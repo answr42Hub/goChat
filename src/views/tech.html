@@ -1,6 +1,5 @@
 <script>
     window.onload = function () {
-        var conn;
         var clientIndex = 0;
         var client = "";
         var clients = [];
@@ -8,6 +7,7 @@
         var chat = document.getElementById("chat");
         var log = document.getElementById("log");
         var mapConv = new Map();
+        var conn = new WebSocket("ws://" + document.location.host + "/techWS");
 
         function loadChat() {
             let arrayChat = mapConv.get(client);
@@ -19,10 +19,18 @@
 
                     if (text.includes("Vous:")) {
                         msg.className = "d-flex flex-row-reverse";
-                        msg.innerHTML = "<div class='card bg-primary text-white fs-5 mb-1 p-2 '><b>" + arrayChat[i] + "</b></div>";
+                        let innerDiv = document.createElement("div");
+                        innerDiv.className = "card bg-primary text-white fs-5 mb-1 p-2";
+                        innerDiv.style = "text-decoration: bold";
+                        innerDiv.innerText = arrayChat[i];
+                        msg.appendChild(innerDiv)
                     } else {
                         msg.className = "d-flex flex-row";
-                        msg.innerHTML = "<div class='card bg-secondary text-white fs-5 mb-1 p-2'><b>" + arrayChat[i] + "</b></div>";
+                        let innerDiv = document.createElement("div");
+                        innerDiv.className = "card bg-secondary text-white fs-5 mb-1 p-2";
+                        innerDiv.style = "text-decoration: bold";
+                        innerDiv.innerText = arrayChat[i];
+                        msg.appendChild(innerDiv)
                     }
 
                     appendChat(msg);
@@ -40,13 +48,10 @@
             if (client === "" && clients.length > 0) {
                 client = clients[0];
             }
-
-            let strMsg = JSON.stringify({id: "tech", textMsg: msg.value, destId: client});
-
-            conn.send(strMsg);
             let array = mapConv.get(client);
             array.push("Vous: " + msg.value);
             mapConv.set[client] = array;
+            conn.send(JSON.stringify({id: "tech", textMsg: msg.value, destId: client}));
             msg.value = "";
             loadChat();
             return false;
@@ -68,19 +73,21 @@
             }
         }
 
-        conn = new WebSocket("ws://" + document.location.host + "/techWS");
         conn.onclose = function (evt) {
             var item = document.createElement("div");
-            item.innerHTML = "<b>Connection closed.</b>";
+            item.style = "text-decoration: bold";
+            item.innerText = "Connection closed.";
             appendLog(item);
         };
         conn.onmessage = function (evt) {
             let messages = JSON.parse(evt.data);
 
-            if (!mapConv.has(messages.id)) {
+            console.log(messages);
+
+            if (!mapConv.has(messages.id) && messages.textMsg === "_client_connected_") {
                 clientIndex++;
                 clients.push(messages.id);
-                mapConv.set(messages.id, ["Client: " + messages.message]);
+                mapConv.set(messages.id, []);
                 let btn = document.createElement("button");
                 btn.textContent = "Client " + clientIndex.toString();
                 btn.id = "btn-" + messages.id;
@@ -93,9 +100,9 @@
                 if (client === "" && clients.length > 0) {
                     client = clients[0];
                 }
-            } else {
+            } else if (messages.id !== "tech") {
                 let array = mapConv.get(messages.id);
-                array.push("Client: " + messages.message);
+                array.push("Client: " + messages.textMsg);
                 mapConv.set(messages.id, array);
                 if (client === messages.id) {
                     loadChat();

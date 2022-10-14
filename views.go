@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -60,7 +61,7 @@ func LoadClient(w http.ResponseWriter, r *http.Request, id int) {
 	vueStr := string(vue)
 	client, _ := os.ReadFile("./src/views/client.html")
 	clientStr := string(client)
-	clientStr = strings.Replace(clientStr, "###ID###", string(id), 1)
+	clientStr = strings.Replace(clientStr, "###ID###", strconv.Itoa(id), 1)
 	vueStr = strings.Replace(vueStr, "###TITLE###", "Clavardage du C.A.I.", 1)
 	vueStr = strings.Replace(vueStr, "###SUBTITLE###", "Attendez, un technicien est sur le point de vous aider !", 1)
 	vueStr = strings.Replace(vueStr, "###CONTENT###", clientStr, 1)

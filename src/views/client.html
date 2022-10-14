@@ -1,97 +1,108 @@
 <script>
 
-  window.onload = function () {
-    var conn;
-    var msg = document.getElementById("msg");
-    var chat = document.getElementById("chat");
-    var log = document.getElementById("log");
+    window.onload = function () {
+        var conn;
+        var msg = document.getElementById("msg");
+        var chat = document.getElementById("chat");
+        var log = document.getElementById("log");
+        var client = document.getElementById("client");
+        conn = new WebSocket("ws://" + document.location.host + "/clientWS");
 
-    var btnQuit = document.getElementById("quit");
-    btnQuit.onclick = function () {
-      conn.send("disconnected");
-      conn.close();
-      window.location.href = "http://localhost:8080/";
+        document.getElementById("quit").onclick = function () {
+            conn.send("disconnected");
+            conn.close();
+            window.location.href = "http://localhost:8080/";
+        };
+
+        function appendLog(item) {
+            var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
+            log.appendChild(item);
+            if (doScroll) {
+                log.scrollTop = log.scrollHeight - log.clientHeight;
+            }
+        }
+
+        function appendChat(item) {
+            var doScroll = chat.scrollTop > chat.scrollHeight - chat.clientHeight - 1;
+            chat.appendChild(item);
+            if (doScroll) {
+                chat.scrollTop = chat.scrollHeight - chat.clientHeight;
+            }
+        }
+
+        document.getElementById("form").onsubmit = function () {
+            if (!conn) {
+                return false;
+            }
+            if (!msg.value) {
+                return false;
+            }
+            let msgElement = document.createElement("div");
+            msgElement.className = "d-flex flex-row-reverse";
+            let innerDiv = document.createElement("div");
+            innerDiv.className = "card bg-primary text-white fs-5 mb-1 p-2";
+            innerDiv.innerText = "Vous: " + msg.value;
+            msgElement.appendChild(innerDiv);
+            appendChat(msgElement);
+            conn.send(JSON.stringify({id: client.value, textMsg: msg.value, destId: "tech"}));
+            msg.value = "";
+            return false;
+        };
+
+        conn.onopen = function (evt) {
+            conn.send(JSON.stringify({id: client.value, textMsg: "_client_connected_", destId: "tech"}));
+        };
+
+        conn.onclose = function (evt) {
+          var item = document.createElement("div");
+          item.innerText = "Connection closed.";
+          appendLog(item);
+        };
+
+        conn.onmessage = function (evt) {
+            let messages = JSON.parse(evt.data);
+
+            console.log(messages);
+
+            if (messages.id === "tech") {
+                let msgElement = document.createElement("div");
+                msgElement.className = "d-flex flex-row";
+                let innerDiv = document.createElement("div");
+                innerDiv.className = "card bg-secondary text-white fs-5 mb-1 p-2";
+                innerDiv.innerText = "Tech: " + messages.textMsg;
+                msgElement.appendChild(innerDiv);
+                appendChat(msgElement);
+            }
+        };
     };
-
-    function appendLog(item) {
-      var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
-      log.appendChild(item);
-      if (doScroll) {
-        log.scrollTop = log.scrollHeight - log.clientHeight;
-      }
-    }
-
-    function appendChat(item) {
-      var doScroll = chat.scrollTop > chat.scrollHeight - chat.clientHeight - 1;
-      chat.appendChild(item);
-      if (doScroll) {
-        chat.scrollTop = chat.scrollHeight - chat.clientHeight;
-      }
-    }
-
-    document.getElementById("form").onsubmit = function () {
-      if (!conn) {
-        return false;
-      }
-      if (!msg.value) {
-        return false;
-      }
-      conn.send(JSON.stringify({id: "client", textMsg: msg.value, destId: "tech"}));
-
-      let msgElement = document.createElement("div");
-
-      msgElement.className = "d-flex flex-row-reverse";
-      msgElement.innerHTML = "<div class='card bg-primary text-white fs-5 mb-1 p-2'><b>" + "Vous: " + msg.value + "</b></div>";
-      msg.value = "";
-      return false;
-    };
-    conn = new WebSocket("ws://" + document.location.host + "/clientWS");
-
-    conn.onopen = function (evt) {
-      conn.send(JSON.stringify({id: "client", textMsg: "connected", destId: "tech"}));
-    };
-    conn.onclose = function (evt) {
-      var item = document.createElement("div");
-      item.innerHTML = "<b>Connection closed.</b>";
-      appendLog(item);
-
-    };
-    conn.onmessage = function (evt) {
-      let messages = JSON.parse(evt.data);
-
-      console.log(messages);
-        let msgElement = document.createElement("div");
-
-        msgElement.className = "d-flex flex-row";
-        msgElement.innerHTML = "<div class='card bg-secondary text-white fs-5 mb-1 p-2'><b>" + "Tech: " + messages.textMsg + "</b></div>";
-
-        appendChat(msgElement);
-    };
-  };
 </script>
 <div class="container-fluid d-flex flex-column h-100">
-  <div class="text-center flex-grow-0 row">
-    <h1>Clavardage du CAI</h1>
-  </div>
-  <div class="flex-grow-1">
-    <div class="d-flex flex-column h-100">
-      <div class="flex-grow-0" id="message-form">
-        <div class="flex-grow-1" id="chat">
-
-        </div>
-        <div id="log" class="overflow-auto"></div>
-        <form class="d-flex" id="form">
-          <div class="flex-grow-1 me-2">
-            <input class="d-none" id="client" value="###ID###">
-            <input placeholder="Message" id="msg" class="form-control mt-2">
-          </div>
-          <button type="submit" id="send" class="btn btn-primary btn-sm rounded-circle">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cursor-fill" viewBox="0 0 16 16" style="position:relative;bottom:2px;"><path d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103z"/></svg>
-          </button>
-        </form>
-        <button class="btn btn-danger mt-2" id="quit">Quitter</button>
-      </div>
-      <p class="text-muted"><b>Système</b>: Bienvenue au service d'aide en ligne du CAI! Comment pouvons-nous vous aider?</p>
+    <div class="text-center flex-grow-0 row">
+        <h1>Clavardage du CAI</h1>
     </div>
-  </div>
+    <div class="flex-grow-1">
+        <div class="d-flex flex-column h-100">
+            <div class="flex-grow-0" id="message-form">
+                <div class="flex-grow-1" id="chat">
+
+                </div>
+                <div id="log" class="overflow-auto"></div>
+                <form class="d-flex" id="form">
+                    <div class="flex-grow-1 me-2">
+                        <input class="d-none" id="client" value="###ID###">
+                        <input placeholder="Message" id="msg" class="form-control mt-2">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm rounded-circle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                             class="bi bi-cursor-fill" viewBox="0 0 16 16" style="position:relative;bottom:2px;">
+                            <path d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103z"/>
+                        </svg>
+                    </button>
+                </form>
+                <button class="btn btn-danger mt-2" id="quit">Quitter</button>
+            </div>
+            <p class="text-muted"><b>Système</b>: Bienvenue au service d'aide en ligne du CAI! Comment pouvons-nous vous
+                aider?</p>
+        </div>
+    </div>
 </div>

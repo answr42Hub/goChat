@@ -47,12 +47,12 @@ func ServeTechWs(w http.ResponseWriter, r *http.Request, clients map[string]chan
 			}
 
 			err = json.Unmarshal(msg, &message)
-			id := message.Id
+
+			id := message.DestId
 			conn.WriteJSON(message)
 			clients[id] <- message
 		}
 	}()
-
 	for {
 		select {
 		case msg := <-Tech:
@@ -61,7 +61,6 @@ func ServeTechWs(w http.ResponseWriter, r *http.Request, clients map[string]chan
 			return
 		}
 	}
-
 }
 
 func ServeClientWs(w http.ResponseWriter, r *http.Request, tech chan<- Message, clients map[string]chan Message, id int) {
@@ -76,7 +75,7 @@ func ServeClientWs(w http.ResponseWriter, r *http.Request, tech chan<- Message, 
 	client := clients[strconv.Itoa(id)]
 	defer close(clientDisc)
 
-	go func() {
+	go func() { //writeTech
 		defer func() { clientDisc <- true }()
 		var message Message
 		for {
@@ -91,6 +90,10 @@ func ServeClientWs(w http.ResponseWriter, r *http.Request, tech chan<- Message, 
 			}
 
 			err = json.Unmarshal(msg, &message)
+			if err != nil {
+				log.Println(err)
+				return
+			}
 			conn.WriteJSON(message)
 			tech <- message
 		}
